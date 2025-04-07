@@ -1,0 +1,1287 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Dimension Analyzer - xAI Tools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        main {
+            padding: 40px 0;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            border: 2px dashed #bdc3c7;
+            padding: 3rem;
+            text-align: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #3498db;
+            background-color: #f8fafc;
+        }
+
+        .upload-area p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .status-message {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .results {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            background-color: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .preview-container {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .preview-container p {
+            font-size: 1rem;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+
+        .pdf-preview {
+            max-width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .upload-section { padding: 1.5rem; }
+            .upload-area { padding: 2rem; }
+            .pdf-preview { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PDF Dimension Analyzer</h1>
+            <p>Upload your technical drawings to extract and analyze dimensions</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <section class="upload-section">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    <label for="fileInput" class="upload-area" id="dropZone">
+                        <p>Drag & drop your PDF here or click to browse<br><small>(Only .pdf files accepted)</small></p>
+                        <input type="file" id="fileInput" name="file" accept=".pdf">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Analyze Document</button>
+                    </label>
+                </form>
+
+                <div id="previewContainer" class="preview-container" style="display: none;">
+                    <p id="fileName"></p>
+                    <iframe id="pdfPreview" class="pdf-preview"></iframe>
+                </div>
+                    <div class="results">
+                        <a href="/download/{{ pdf_filename }}" class="download-btn" download>Download Annotated PDF</a>
+                        <a href="/download/{{ excel_filename }}" class="download-btn" download>Download Excel Report</a>
+                    </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 Insight Technologies. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const form = document.getElementById('uploadForm');
+        const previewContainer = document.getElementById('previewContainer');
+        const fileNameDisplay = document.getElementById('fileName');
+        const pdfPreview = document.getElementById('pdfPreview');
+        const submitBtn = document.getElementById('submitBtn');
+
+        function showPreview(files) {
+            previewContainer.style.display = 'none';
+            if (files.length === 1 && files[0].type === 'application/pdf') {
+                const file = files[0];
+                fileNameDisplay.textContent = `Selected File: ${file.name}`;
+                const url = URL.createObjectURL(file);
+                pdfPreview.src = url;
+                previewContainer.style.display = 'block';
+            } else if (files.length > 1) {
+                fileNameDisplay.textContent = `${files.length} PDFs selected`;
+                pdfPreview.src = '';
+                previewContainer.style.display = 'block';
+            }
+        }
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            showPreview(fileInput.files);
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            showPreview(fileInput.files);
+        });
+
+        form.addEventListener('submit', (e) => {
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                alert('Please select a PDF file first.');
+            }
+        });
+    </script>
+</body>
+</html> -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Dimension Analyzer - xAI Tools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        main {
+            padding: 40px 0;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            padding: 3rem;
+            text-align: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .status-message {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .results {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            background-color: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .preview-container {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .preview-container p {
+            font-size: 1rem;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+
+        .pdf-preview {
+            max-width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .upload-section { padding: 1.5rem; }
+            .upload-area { padding: 2rem; }
+            .pdf-preview { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PDF Dimension Analyzer</h1>
+            <p>Upload your technical drawings to extract and analyze dimensions</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <section class="upload-section">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    <label for="fileInput" class="upload-area" id="dropZone">
+                        <p>Drag & drop your PDF here or click to browse<br><small>(Only .pdf files accepted)</small></p>
+                        <input type="file" id="fileInput" name="file" accept=".pdf">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Analyze Document</button>
+                    </label>
+                </form>
+
+                <div id="previewContainer" class="preview-container" style="display: none;">
+                    <p id="fileName"></p>
+                    <iframe id="pdfPreview" class="pdf-preview"></iframe>
+                </div>
+
+                {% if message %}
+                    <div class="status-message success">
+                        <span>{{ message }}</span>
+                    </div>
+                {% endif %}
+                
+                {% if error %}
+                    <div class="status-message error">
+                        <span>{{ error }}</span>
+                    </div>
+                {% endif %}
+
+                {% if pdf_filename and excel_filename %}
+                    <div class="results">
+                        <a href="/download/{{ pdf_filename }}" class="download-btn" download>Download Annotated PDF</a>
+                        <a href="/download/{{ excel_filename }}" class="download-btn" download>Download Excel Report</a>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 xAI Tools. All rights reserved. | Powered by <a href="https://x.ai" target="_blank">xAI</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const form = document.getElementById('uploadForm');
+        const previewContainer = document.getElementById('previewContainer');
+        const fileNameDisplay = document.getElementById('fileName');
+        const pdfPreview = document.getElementById('pdfPreview');
+
+        function showPreview(files) {
+            previewContainer.style.display = 'none';
+            if (files.length === 1 && files[0].type === 'application/pdf') {
+                const file = files[0];
+                fileNameDisplay.textContent = `Selected File: ${file.name}`;
+                const url = URL.createObjectURL(file);
+                pdfPreview.src = url;
+                previewContainer.style.display = 'block';
+            } else if (files.length > 1) {
+                fileNameDisplay.textContent = `${files.length} PDFs selected`;
+                pdfPreview.src = '';
+                previewContainer.style.display = 'block';
+            }
+        }
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            showPreview(fileInput.files);
+            // Removed automatic form.submit()
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            showPreview(fileInput.files);
+            // Removed automatic form.submit()
+        });
+
+        form.addEventListener('submit', (e) => {
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                alert('Please select a PDF file first.');
+            }
+        });
+    </script>
+</body>
+</html> -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Dimension Analyzer - xAI Tools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        main {
+            padding: 40px 0;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            padding: 3rem;
+            text-align: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .status-message {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .results {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            background-color: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .preview-container {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .preview-container p {
+            font-size: 1rem;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+
+        .pdf-preview {
+            max-width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .upload-section { padding: 1.5rem; }
+            .upload-area { padding: 2rem; }
+            .pdf-preview { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PDF Dimension Analyzer</h1>
+            <p>Upload your technical drawings to extract and analyze dimensions</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <section class="upload-section">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    <label for="fileInput" class="upload-area" id="dropZone">
+                        <p>Drag & drop your PDFs here or click to browse<br><small>(Multiple .pdf files accepted)</small></p>
+                        <input type="file" id="fileInput" name="file" accept=".pdf" multiple>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Analyze Documents</button>
+                    </label>
+                </form>
+
+                <div id="previewContainer" class="preview-container" style="display: none;">
+                    <p id="fileName"></p>
+                    <iframe id="pdfPreview" class="pdf-preview"></iframe>
+                </div>
+
+                {% if results %}
+                    {% for result in results %}
+                        <div class="status-message {{ 'success' if result.pdf_filename else 'error' }}">
+                            <span>{{ result.message }}</span>
+                        </div>
+                        {% if result.pdf_filename and result.excel_filename %}
+                            <div class="results">
+                                <a href="/download/{{ result.pdf_filename }}" class="download-btn" download>Download Annotated PDF</a>
+                                <a href="/download/{{ result.excel_filename }}" class="download-btn" download>Download Excel Report</a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+                
+                {% if error %}
+                    <div class="status-message error">
+                        <span>{{ error }}</span>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 xAI Tools. All rights reserved. | Powered by <a href="https://x.ai" target="_blank">xAI</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const form = document.getElementById('uploadForm');
+        const previewContainer = document.getElementById('previewContainer');
+        const fileNameDisplay = document.getElementById('fileName');
+        const pdfPreview = document.getElementById('pdfPreview');
+
+        function showPreview(files) {
+            previewContainer.style.display = 'none';
+            if (files.length > 0) {
+                const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf');
+                if (pdfFiles.length === 1) {
+                    fileNameDisplay.textContent = `Selected File: ${pdfFiles[0].name}`;
+                    const url = URL.createObjectURL(pdfFiles[0]);
+                    pdfPreview.src = url;
+                    previewContainer.style.display = 'block';
+                } else if (pdfFiles.length > 1) {
+                    fileNameDisplay.textContent = `${pdfFiles.length} PDFs selected`;
+                    pdfPreview.src = ''; // Clear preview for multiple files
+                    previewContainer.style.display = 'block';
+                }
+            }
+        }
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            showPreview(fileInput.files);
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            showPreview(fileInput.files);
+        });
+
+        form.addEventListener('submit', (e) => {
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                alert('Please select at least one PDF file.');
+            }
+        });
+    </script>
+</body>
+</html> -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Dimension Analyzer - xAI Tools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        main {
+            padding: 40px 0;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            padding: 3rem;
+            text-align: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .status-message {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .results {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            background-color: #2ecc71;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+
+        .preview-container {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .preview-container p {
+            font-size: 1rem;
+            color: #444;
+            margin-bottom: 1rem;
+        }
+
+        .pdf-preview {
+            max-width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .file-list {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .remove-btn {
+            color: #c62828;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0 10px;
+        }
+
+        .remove-btn:hover {
+            color: #b71c1c;
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            header h1 { font-size: 2rem; }
+            .upload-section { padding: 1.5rem; }
+            .upload-area { padding: 2rem; }
+            .pdf-preview { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PDF Dimension Analyzer</h1>
+            <p>Upload your technical drawings to extract and analyze dimensions</p>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <section class="upload-section">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    <label for="fileInput" class="upload-area" id="dropZone">
+                        <p>Drag & drop your PDFs here or click to browse<br><small>(Multiple .pdf files accepted)</small></p>
+                        <input type="file" id="fileInput" name="file" accept=".pdf" multiple>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Analyze Documents</button>
+                    </label>
+                </form>
+
+                <div id="fileList" class="file-list" style="display: none;"></div>
+
+                <div id="previewContainer" class="preview-container" style="display: none;">
+                    <p id="fileName"></p>
+                    <iframe id="pdfPreview" class="pdf-preview"></iframe>
+                </div>
+
+                {% if results %}
+                    {% for result in results %}
+                        <div class="status-message {{ 'success' if result.pdf_filename else 'error' }}">
+                            <span>{{ result.message }}</span>
+                        </div>
+                        {% if result.pdf_filename and result.excel_filename %}
+                            <div class="results">
+                                <a href="/download/{{ result.pdf_filename }}" class="download-btn" download>Download Annotated PDF</a>
+                                <a href="/download/{{ result.excel_filename }}" class="download-btn" download>Download Excel Report</a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+                
+                {% if error %}
+                    <div class="status-message error">
+                        <span>{{ error }}</span>
+                    </div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2025 Insight Technoloies. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const form = document.getElementById('uploadForm');
+        const previewContainer = document.getElementById('previewContainer');
+        const fileNameDisplay = document.getElementById('fileName');
+        const pdfPreview = document.getElementById('pdfPreview');
+        const fileList = document.getElementById('fileList');
+
+        let selectedFiles = [];
+
+        function updateFileDisplay() {
+            fileList.innerHTML = '';
+            if (selectedFiles.length > 0) {
+                selectedFiles.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <span>${file.name}</span>
+                        <span class="remove-btn" data-index="${index}">✖</span>
+                    `;
+                    fileList.appendChild(fileItem);
+                });
+                fileList.style.display = 'block';
+
+                // Add event listeners to remove buttons
+                document.querySelectorAll('.remove-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        selectedFiles.splice(index, 1);
+                        updateFileInput();
+                        updateFileDisplay();
+                        showPreview();
+                    });
+                });
+            } else {
+                fileList.style.display = 'none';
+            }
+        }
+
+        function updateFileInput() {
+            const dataTransfer = new DataTransfer();
+            selectedFiles.forEach(file => dataTransfer.items.add(file));
+            fileInput.files = dataTransfer.files;
+        }
+
+        function showPreview() {
+            previewContainer.style.display = 'none';
+            if (selectedFiles.length === 1 && selectedFiles[0].type === 'application/pdf') {
+                fileNameDisplay.textContent = `Selected File: ${selectedFiles[0].name}`;
+                const url = URL.createObjectURL(selectedFiles[0]);
+                pdfPreview.src = url;
+                previewContainer.style.display = 'block';
+            } else if (selectedFiles.length > 1) {
+                fileNameDisplay.textContent = `${selectedFiles.length} PDFs selected`;
+                pdfPreview.src = ''; // No preview for multiple files
+                previewContainer.style.display = 'block';
+            }
+        }
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const newFiles = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+            selectedFiles = [...selectedFiles, ...newFiles];
+            updateFileInput();
+            updateFileDisplay();
+            showPreview();
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            const newFiles = Array.from(fileInput.files).filter(file => file.type === 'application/pdf');
+            selectedFiles = [...selectedFiles, ...newFiles];
+            updateFileInput();
+            updateFileDisplay();
+            showPreview();
+        });
+
+        form.addEventListener('submit', (e) => {
+            if (!selectedFiles.length) {
+                e.preventDefault();
+                alert('Please select at least one PDF file.');
+            }
+        });
+    </script>
+</body>
+</html>
