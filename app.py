@@ -1,9 +1,12 @@
-from flask import Flask, request, render_template, send_from_directory, abort
+from flask import Flask, request, render_template, send_from_directory, abort 
 import fitz  # PyMuPDF
 import os
 import re
 import pandas as pd
 from werkzeug.utils import secure_filename
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font
+from openpyxl.worksheet.datavalidation import DataValidation
 
 app = Flask(__name__)
 
@@ -14,20 +17,18 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
 app.config['PREVIEW_FOLDER'] = PREVIEW_FOLDER
 
-# Ensure folders exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(PREVIEW_FOLDER, exist_ok=True)
 
 DIMENSION_PATTERN = re.compile(
-    r"""
-    (⌀?\d+(?:[\.,]\d+)?(?:°)?)             # Main dimension (e.g., ⌀14, 45°, 25.5)
-    (?:[ ]?[±]?[ ]?(\d+(?:[\.,]\d+)?))?    # Optional symmetric tolerance
-    """,
+    r"(⌀?\d+(?:[\.,]\d+)?(?:°)?)"
+    r"(?:[ ]?[\u00b1]?[ ]?(\d+(?:[\.,]\d+)?))?",
     re.VERBOSE
 )
 
 NEG_TOLERANCE_PATTERN = re.compile(r"-\d+[\.,]?\d*")
+PLUS_MINUS_PATTERN = re.compile(r"±\s*(\d+[\.,]?\d*)")
 TAPPED_HOLE_PATTERN = re.compile(r"^(M\d+)\b")
 
 TOLERANCE_RANGES = [
@@ -38,6 +39,8 @@ TOLERANCE_RANGES = [
     (315, 1000, 0.8),
     (1000, 1200, 1.2)
 ]
+
+MEASURING_INSTRUMENTS = ["Vernier", "Mic", "HG", "BG", "CMM", "SG", "PG", "TG"]
 
 def calculate_general_tolerance(value):
     try:
@@ -87,6 +90,63 @@ def highlight_and_balloon(page, text, position, balloon_counter):
     except Exception as e:
         print(f"Balloon error: {e}")
 
+def write_to_inspection_template(df, excel_path):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Inspection Report"
+
+    headers = [
+        ["", "", "", "", "INSIGHT TECHNOLOGIES", "", "", "", "", "", ""],
+        ["", "", "", "", "FINAL INSPECTION REPORT", "", "", "", "", "", ""],
+        ["Part No:", df["Part No"].iloc[0] if "Part No" in df.columns else "", "", "Project No:", "", "", "Date:", ""],
+        ["Part Name:", df["Part Name"].iloc[0] if "Part Name" in df.columns else "", "", "Customer Name:", "", "", "Doc No:", "", "", "Rev Date:", ""],
+        ["", "", "", "", "PHYSICAL INSPECTION", "", "", "", "", "", ""],
+        ["Sl No", "Characteristics", "Method", "Acceptance Criteria", "Characteristics", "Method", "Acceptance Criteria", "Remark", ""],
+        ["1", "Finish", "", "", "Quantity", "", "", "", "", ""],
+        ["2", "Coating", df.get("Surface Coating", [""])[0], "", "Hardness", df.get("Heat Treatment", [""])[0], "", "", "", ""],
+        ["3", "Rust", "", "", "Material", df.get("Material", [""])[0], "", "", "", ""],
+        ["", "", "", "", "DIMENSIONAL INSPECTION", "", "", "", "", "", ""],
+        ["S.No", "Balloon No", "Characteristics", "Nominal Size", "Tol", "Upper Limit", "Lower Limit", "Measuring Instrument", "Method of inspection", "", "", "", "Number of parts", ""],
+        ["", "", "", "", "", "", "", "", "", "1", "2", "3", "4", "5", "6", "7", "8", "Remark", ""]
+    ]
+
+    for r_idx, row in enumerate(headers, start=1):
+        ws.append(row)
+        for c_idx, cell in enumerate(row, start=1):
+            if isinstance(cell, str) and cell.strip():
+                ws.cell(row=r_idx, column=c_idx).font = Font(bold=True)
+
+    start_row = ws.max_row + 1
+
+    for idx, row in df.iterrows():
+        ws.append([
+            idx + 1,
+            row.get("Balloon Number", ""),
+            row.get("Dimension Type", ""),
+            row.get("Nominal Dimension", ""),
+            row.get("Tolerance", ""),
+            row.get("Upper Limit", ""),
+            row.get("Lower Limit", ""),
+            "",  # Measuring Instrument (will add dropdown)
+            "", "", "", "", "", "", "", "", "", "", ""
+        ])
+
+    dropdown_list = ",".join(MEASURING_INSTRUMENTS)
+    dv = DataValidation(type="list", formula1=f'"{dropdown_list}"', allow_blank=True)
+
+    ws.add_data_validation(dv)
+    for row in range(start_row, start_row + len(df)):
+        dv.add(ws.cell(row=row, column=8))  # Measuring Instrument column
+
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    wb.save(excel_path)
+
+# Rest of your code remains the same...
+
+
 def process_pdf(filepath, filename):
     output_pdf_path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
     excel_output_path = os.path.join(app.config['OUTPUT_FOLDER'], f"{os.path.splitext(filename)[0]}_Dimensions.xlsx")
@@ -95,13 +155,38 @@ def process_pdf(filepath, filename):
     doc = fitz.open(filepath)
     results = []
     balloon_counter = 1
-
-    print(f"\nProcessing {filename}...")
+    part_no = ""
+    part_name = ""
+    surface_coating = ""
+    material = ""
+    heat_treatment = ""
 
     for page_number, page in enumerate(doc):
         if page_number == 0:
             pix = page.get_pixmap(dpi=150)
             pix.save(preview_image_path)
+
+        text = page.get_text()
+
+        coating_match = re.search(r"Surface Coating\s*:\s*(.*)", text, re.IGNORECASE)
+        if coating_match:
+            surface_coating = coating_match.group(1).split('|')[0].strip()
+
+        material_match = re.search(r"Material\s*:\s*(.*)", text, re.IGNORECASE)
+        if material_match:
+            material = material_match.group(1).split('|')[0].strip()
+
+        heat_match = re.search(r"Heat Treatment\s*:\s*(.*)", text, re.IGNORECASE)
+        if heat_match:
+            heat_treatment = heat_match.group(1).split('|')[0].strip()
+
+        pn_match = re.search(r"(?:P/N|Part Number)[:\s]*([0-9]{4}-[0-9]{6})", text, re.IGNORECASE)
+        if pn_match:
+            part_no = pn_match.group(1)
+
+        title_match = re.search(r"Title[:\s]*([\w\s\-/]+)", text, re.IGNORECASE)
+        if title_match:
+            part_name = title_match.group(1).strip()
 
         page_height = page.rect.height
         words = page.get_text("words", sort=True)
@@ -130,7 +215,9 @@ def process_pdf(filepath, filename):
                     "Nominal Dimension": tapped,
                     "Tolerance": "-",
                     "Upper Limit": "-",
-                    "Lower Limit": "-"
+                    "Lower Limit": "-",
+                    "Part No": part_no,
+                    "Part Name": part_name
                 })
                 balloon_counter += 1
                 processed_rects.append(rect)
@@ -147,12 +234,19 @@ def process_pdf(filepath, filename):
                     w[4].strip() for w in words
                     if abs(w[0] - x) < 50 and abs(w[1] - y) < 20 and w[4].strip() != text
                 ]
+
                 neg_tols = [float(t.replace(",", ".")) for nt in nearby_texts for t in NEG_TOLERANCE_PATTERN.findall(nt)]
+                plus_minus_tols = [float(t.replace(",", ".")) for nt in nearby_texts for t in PLUS_MINUS_PATTERN.findall(nt)]
 
                 if neg_tols:
                     upper = nominal_val + max(neg_tols)
                     lower = nominal_val + min(neg_tols)
                     tol_display = f"{min(neg_tols)} to {max(neg_tols)}"
+                elif plus_minus_tols:
+                    tol_val = plus_minus_tols[0]
+                    upper = nominal_val + tol_val
+                    lower = nominal_val - tol_val
+                    tol_display = f"±{tol_val:.2f}"
                 elif tolerance_str:
                     tol_val = float(tolerance_str.replace(",", "."))
                     upper = nominal_val + tol_val
@@ -177,7 +271,9 @@ def process_pdf(filepath, filename):
                     "Nominal Dimension": nominal,
                     "Tolerance": tol_display,
                     "Upper Limit": upper,
-                    "Lower Limit": lower
+                    "Lower Limit": lower,
+                    "Part No": part_no,
+                    "Part Name": part_name
                 })
                 balloon_counter += 1
                 processed_rects.append(rect)
@@ -185,7 +281,10 @@ def process_pdf(filepath, filename):
     if results:
         doc.save(output_pdf_path)
         df = pd.DataFrame(results)
-        df.to_excel(excel_output_path, index=False)
+        df.insert(0, "Surface Coating", surface_coating)
+        df.insert(1, "Material", material)
+        df.insert(2, "Heat Treatment", heat_treatment)
+        write_to_inspection_template(df, excel_output_path)
         return output_pdf_path, excel_output_path
     return None, None
 
@@ -194,10 +293,10 @@ def upload_file():
     if request.method == 'POST':
         if 'file' not in request.files:
             return render_template('index.html', error='No file part')
-        files = request.files.getlist('file')  # Changed to getlist for multiple files
+        files = request.files.getlist('file')
         if not files or all(file.filename == '' for file in files):
             return render_template('index.html', error='No selected files')
-        
+
         results = []
         for file in files:
             if file and file.filename.lower().endswith('.pdf'):
@@ -217,11 +316,11 @@ def upload_file():
                         'excel_filename': None,
                         'message': f"⚠️ No dimensions detected in {filename}"
                     })
-        
+
         if not results:
             return render_template('index.html', error='No valid PDF files uploaded')
         return render_template('index.html', results=results)
-    
+
     return render_template('index.html')
 
 @app.route('/download/<filename>')
@@ -233,3 +332,4 @@ def download_file(filename):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
