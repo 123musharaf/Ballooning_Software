@@ -127,7 +127,7 @@ def write_to_inspection_template(df, excel_path):
             row.get("Tolerance", ""),
             row.get("Upper Limit", ""),
             row.get("Lower Limit", ""),
-            "",  # Measuring Instrument (will add dropdown)
+            "",  # Measuring Instrument (dropdown added below)
             "", "", "", "", "", "", "", "", "", "", ""
         ])
 
@@ -138,13 +138,23 @@ def write_to_inspection_template(df, excel_path):
     for row in range(start_row, start_row + len(df)):
         dv.add(ws.cell(row=row, column=8))  # Measuring Instrument column
 
+    # Center align all cells
     for row in ws.iter_rows():
         for cell in row:
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    wb.save(excel_path)
+    # Add and bold the final two rows
+    final_rows = [
+        ["Accepted By:", "", "", "Rework:", "", "", "Rejected:", ""],
+        ["Checked by:", "", "", "", "", "", "Inspected by:", ""]
+    ]
+    for final_row in final_rows:
+        ws.append(final_row)
+        current_row = ws.max_row
+        for col in range(1, len(final_row) + 1):
+            ws.cell(row=current_row, column=col).font = Font(bold=True)
 
-# Rest of your code remains the same...
+    wb.save(excel_path)
 
 
 def process_pdf(filepath, filename):
